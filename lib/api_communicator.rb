@@ -2,10 +2,18 @@ require 'rest-client'
 require 'json'
 require 'pry'
 
-def get_character_movies_from_api(character_name)
-  #make the web request
+def get_characters
   response_string = RestClient.get('http://www.swapi.co/api/people/')
   response_hash = JSON.parse(response_string)
+end
+
+def get_character_movies_from_api(character_name)
+  #make the web request
+  get_characters
+  character = get_characters["results"].find {|character| character["name"].downcase==character_name}
+  character["films"].map do |film|
+    JSON.parse(RestClient.get(film))
+  end
 
   # iterate over the response hash to find the collection of `films` for the given
   #   `character`
@@ -20,14 +28,22 @@ end
 
 def print_movies(films)
   # some iteration magic and puts out the movies in a nice list
+  films = films.sort_by {|film| film["episode_id"]}
+  films.each do |film|
+    puts "*" * 30
+    puts "Title: #{film["title"]}"
+    puts "Episode: #{film["episode_id"]}"
+    puts "Description: #{film["opening_crawl"][0..150]}"
+    puts "Release Date #{film["release_date"]}"
+    puts "Director: #{film["director"]}"
+    puts "Characters:"
+    film["characters"].each do |url|
+      puts JSON.parse(RestClient.get(url))["name"]
+    end
+  end
 end
 
 def show_character_movies(character)
   films = get_character_movies_from_api(character)
   print_movies(films)
 end
-
-## BONUS
-
-# that `get_character_movies_from_api` method is probably pretty long. Does it do more than one job?
-# can you split it up into helper methods?
